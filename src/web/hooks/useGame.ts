@@ -11,11 +11,67 @@ export function useGame() {
   const { state, dispatch } = useGameContext();
   const controllerRef = useRef<GameController | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevGameInfoRef = useRef<IGameInfo | null>(null);
 
   const getController = useCallback(() => {
     if (!controllerRef.current) {
       const ctrl = new GameController({
         onStateChange: (info: IGameInfo) => {
+          const prev = prevGameInfoRef.current;
+
+          if (info.phase === "actionResult" && prev?.phase !== "actionResult") {
+            if (info.opponent?.executedAction && info.opponent.executedAction !== "idle") {
+              dispatch({
+                type: "ADD_LOG",
+                entry: { text: `Enemy used ${info.opponent.executedAction}!`, type: "info" },
+              });
+            }
+            if (prev) {
+              const hpLoss = prev.player.health - info.player.health;
+              if (hpLoss > 0) {
+                dispatch({
+                  type: "ADD_LOG",
+                  entry: { text: `You took ${hpLoss} damage!`, type: "damage" },
+                });
+              }
+              const staminaGain = info.player.stamina - prev.player.stamina;
+              if (staminaGain > 0) {
+                dispatch({
+                  type: "ADD_LOG",
+                  entry: { text: `You restored ${staminaGain} stamina`, type: "heal" },
+                });
+              }
+              const oHpLoss = prev.opponent.health - info.opponent.health;
+              if (oHpLoss > 0) {
+                dispatch({
+                  type: "ADD_LOG",
+                  entry: { text: `Enemy took ${oHpLoss} damage!`, type: "damage" },
+                });
+              }
+            }
+          }
+
+          if (info.phase === "roundResult" && prev?.phase !== "roundResult") {
+            dispatch({
+              type: "ADD_LOG",
+              entry: { text: "Round break: +2 HP and +2 SP restored", type: "heal" },
+            });
+          }
+
+          if (info.phase === "matchEnd" && prev?.phase !== "matchEnd") {
+            dispatch({
+              type: "ADD_LOG",
+              entry: {
+                text: info.winnerId
+                  ? (info.winnerId === info.player?.id ? "You win!" : "Enemy wins!")
+                  : "Draw!",
+                type: "system",
+              },
+            });
+          }
+
+          prevGameInfoRef.current = info;
+
           dispatch({
             type: "UPDATE_STATE",
             state: {
