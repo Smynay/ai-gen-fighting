@@ -38,8 +38,13 @@ export function GamePage() {
   };
 
   const handlePlayAgain = () => {
+    const mode = state.gameMode;
+    const difficulty = state.aiDifficulty;
+    if (!mode) return;
+
     reset();
-    navigate("/");
+    startedRef.current = true;
+    startGame(mode, difficulty);
   };
 
   const handleBackToMenu = () => {
